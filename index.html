@@ -262,21 +262,22 @@ const av=(n,r,big)=>`<div class="mem"><div class="avt">${esc(ini(n))}</div><b>${
 function invAll(){const L=cfg.pl;return[...L.inv.map(x=>Object.assign({pk:false},x)),...L.pack.map(x=>Object.assign({pk:true,r:"P"},x))]}
 function curInv(b){b=b||S.b;const a=invAll();return a.find(x=>x.id==b.inv)||a[0]}
 function curPanel(b){b=b||S.b;return cfg.pl.panels.find(x=>x.id==b.panel)||cfg.pl.panels[0]}
-const RANGES=[["A","Range A","Inverters, 3.6–8kW"],["B","Range B","Inverters, 3.6–6kW"],["C","Range C","Inverters, 3.6–10kW"],["D","All-in-one","11kW inverter with built-in battery"],["P","Package","Inverter & battery as one package"]];
-function invName(v){return v.r=="D"?v.kw+"kW all-in-one inverter & battery":v.pk?v.kw+"kW inverter & battery package":v.kw+"kW inverter"}
-function batName(x){return x.r=="D"?"Expansion battery":x.kwh+"kWh battery"}
+const RANGES=[["A","Fox","Fox inverters, 3.6–8kW"],["B","EcoFlow","EcoFlow inverters, 3.6–6kW"],["C","Sig","Sig inverters, 3.6–10kW"],["D","Tesla Powerwall 3","Tesla Powerwall 3: 11kW inverter with built-in battery"],["P","Hinen","Hinen inverter & battery packages"]];
+function BR(r){return({A:"Fox",B:"EcoFlow",C:"Sig",D:"Tesla Powerwall 3",P:"Hinen"})[r]||""}
+function invName(v){return v.r=="D"?"Tesla Powerwall 3 (11kW)":v.pk?"Hinen "+v.kw+"kW inverter & battery package":BR(v.r)+" "+v.kw+"kW inverter"}
+function batName(x){return({a6b:"Fox EP6",a12b:"Fox EP12",b5b:"EcoFlow 5.12kWh",c6b:"Sig 6",c10b:"Sig 10",dxb:"Tesla Powerwall expansion"})[x.id]||(BR(x.r)+" "+x.kwh+"kWh battery")}
 function kwp(b){b=b||S.b;return b.n*curPanel(b).w/1000}
 function batQty(b){b=b||S.b;const v=curInv(b);if(v.pk)return b.pn;return cfg.pl.bat.filter(x=>x.r==v.r).reduce((a,x)=>a+(+b.bat[x.id]||0),0)}
 function batKwh(b){b=b||S.b;const v=curInv(b);if(v.pk||v.r=="D")return null;return cfg.pl.bat.filter(x=>x.r==v.r).reduce((a,x)=>a+(+b.bat[x.id]||0)*x.kwh,0)}
 function hasBat(b){b=b||S.b;const v=curInv(b);return v.r=="D"||v.pk||batQty(b)>0}
-function batDesc(b){b=b||S.b;const v=curInv(b);if(v.r=="D"){const q=batQty(b);return "Built-in battery"+(q?" + "+q+" expansion batter"+(q>1?"ies":"y"):"")}if(v.pk)return b.pn+" packaged batter"+(b.pn>1?"ies":"y");const q=batQty(b);return q?(+batKwh(b).toFixed(2))+"kWh battery storage ("+cfg.pl.bat.filter(x=>x.r==v.r&&b.bat[x.id]).map(x=>b.bat[x.id]+" × "+x.kwh+"kWh").join(", ")+")":"No battery"}
+function batDesc(b){b=b||S.b;const v=curInv(b);if(v.r=="D"){const q=batQty(b);return "Powerwall 3 built-in battery"+(q?" + "+q+" expansion batter"+(q>1?"ies":"y"):"")}if(v.pk)return b.pn+" Hinen batter"+(b.pn>1?"ies":"y");const q=batQty(b);return q?(+batKwh(b).toFixed(2))+"kWh battery storage ("+cfg.pl.bat.filter(x=>x.r==v.r&&b.bat[x.id]).map(x=>b.bat[x.id]+" × "+batName(x)).join(", ")+")":"No battery"}
 function price(b,ac){b=b||S.b;ac=ac===undefined?S.ac:ac;const L=cfg.pl,v=curInv(b),pn=curPanel(b),n=+b.n||0,lines=[];const add=(l,a)=>{if(a)lines.push([l,a])};
  add("Base installation package",+L.base);
  add(n+" × "+pn.w+"W solar panels",n*pn.price);
  add("Roof fixings ("+b.roof+" roof)",n*(+L.roof[b.roof]||0));
  add(invName(v),v.pk?(+v.prices[Math.max(1,Math.min(4,b.pn))-1]||0):+v.price);
  if(!v.pk)L.bat.filter(x=>x.r==v.r).forEach(x=>{const q=+b.bat[x.id]||0;add(q+" × "+batName(x),q*x.price)});
- if(b.gw&&(+L.gw[v.r]||0))add("Gateway",+L.gw[v.r]);
+ if(b.gw&&(+L.gw[v.r]||0))add(BR(v.r)+" gateway",+L.gw[v.r]);
  const sc=L.scaf.find(x=>x[0]==b.scaf);if(+b.scaf)add("Scaffolding"+(sc?" ("+sc[1].toLowerCase()+(b.sq>1?" × "+b.sq:"")+")":""),(+b.scaf)*(+b.sq||1)+(b.bridge?+L.bridge:0));
  if(!b.cman){const cb=L.cable.find(x=>x[0]==b.cable);add("Cable run ("+(cb?cb[1]:"")+")",+b.cable)}
  const o=Math.min(+b.opt||0,n);add(o+" × panel optimiser"+(o>1?"s":""),o*L.opt);
@@ -287,7 +288,7 @@ function price(b,ac){b=b||S.b;ac=ac===undefined?S.ac:ac;const L=cfg.pl,v=curInv(
  if(ac)add(cfg.acname+" (from)",+cfg.acprice||0);
  return{lines,total:lines.reduce((a,x)=>a+x[1],0),manual:!!b.cman}}
 function sysName(b){b=b||S.b;return (+kwp(b).toFixed(2))+"kWp solar"+(hasBat(b)?" + battery":"")+" system"}
-function specList(b){b=b||S.b;const v=curInv(b),p=curPanel(b),a=[b.n+" × "+p.w+"W solar panels ("+(+kwp(b).toFixed(2))+"kWp)",invName(v)+" ("+v.st+" strings)"];if(hasBat(b))a.push(batDesc(b));if(b.gw&&cfg.pl.gw[v.r])a.push("Gateway");if(+b.opt)a.push(Math.min(b.opt,b.n)+" panel optimisers");if(+b.bird)a.push("Bird guard"+(b.bird>1?" × "+b.bird:""));if(b.iboost)a.push("Hot water diverter");if(+b.ev)a.push((b.ev>1?b.ev+" × ":"")+"EV charger");if(+b.scaf)a.push("Scaffolding included");a.push("Full installation by our own team");return a}
+function specList(b){b=b||S.b;const v=curInv(b),p=curPanel(b),a=[b.n+" × "+p.w+"W solar panels ("+(+kwp(b).toFixed(2))+"kWp)",invName(v)+" ("+v.st+" strings)"];if(hasBat(b))a.push(batDesc(b));if(b.gw&&cfg.pl.gw[v.r])a.push(BR(v.r)+" gateway");if(+b.opt)a.push(Math.min(b.opt,b.n)+" panel optimisers");if(+b.bird)a.push("Bird guard"+(b.bird>1?" × "+b.bird:""));if(b.iboost)a.push("Hot water diverter");if(+b.ev)a.push((b.ev>1?b.ev+" × ":"")+"EV charger");if(+b.scaf)a.push("Scaffolding included");a.push("Full installation by our own team");return a}
 const sysPrice=()=>Math.round(price().total);
 function syncPrice(){S.calc.price=sysPrice()}
 function needs(){return[...S.pri.map(k=>PRI.find(p=>p[0]==k)[1]),...S.concerns]}
@@ -424,7 +425,7 @@ const SCR=[
  <div class="card bsec"><h3 class="hc">${it('battery','sm')}Battery storage</h3>
   ${v.pk?`<p class="mut">This package includes the batteries. Choose how many.</p><div class="prow"><div><label>Packaged batteries</label><small class="mut">1–4</small></div>${stp('pn',b.pn,1,4,'batteries')}</div>`:
   `${v.r=='D'?'<p class="mut">The all-in-one unit has a battery built in. Add expansion batteries for more storage.</p>':'<p class="mut">Store daytime sunshine for the evening. Mix and match modules.</p>'}
-  <div class="ocg">${v.r=='D'?'':oc(!batQty(),'noBat()','battery','No battery','Solar only, add one later')}${bats.map(x=>{const q=+b.bat[x.id]||0;return `<div class="oc bq ${q?'on':''}">${it('battery','sm')}<div><b>${batName(x)}</b><small>${x.r=='D'?'Adds storage':'per module'}</small></div>${stp('bat.'+x.id,q,0,6,batName(x))}</div>`}).join('')}</div>`}
+  <div class="ocg">${v.r=='D'?'':oc(!batQty(),'noBat()','battery','No battery','Solar only, add one later')}${bats.map(x=>{const q=+b.bat[x.id]||0;return `<div class="oc bq ${q?'on':''}">${it('battery','sm')}<div><b>${batName(x)}</b><small>${x.r=='D'?'Adds storage':x.kwh+'kWh per module'}</small></div>${stp('bat.'+x.id,q,0,6,batName(x))}</div>`}).join('')}</div>`}
   ${(+L.gw[v.r]||0)?`<label class="tg"><input type="checkbox" ${b.gw?'checked':''} onchange="setB('gw',this.checked?1:0)"><span><b>Add a gateway</b><small>Optional gateway unit. Your adviser will confirm whether your set-up needs one.</small></span></label>`:''}</div>
  <div class="card bsec"><h3 class="hc">${it('bulb','sm')}Extras</h3>
   <div class="prow"><div><label>EV chargers</label><small class="mut">Charge your car on sunshine</small></div>${stp('ev',+b.ev,0,4,'EV chargers')}</div>
@@ -499,9 +500,9 @@ function renderRep(){const st=STAGES[S.step],b=document.getElementById('repBody'
 function plEd(){const L=cfg.pl,f=(k,l,v)=>`<div class="plr"><span>${esc(l)}</span><input data-pl="${k}" type="number" inputmode="decimal" step="0.01" value="${v}"></div>`,g=t=>`<div class="plg">${t}</div>`;let h='';
  h+=g(f('base','Base installation package',L.base)+f('smallLess','Small-system reduction',L.smallLess)+f('smallBelow','…applies below this many panels',L.smallBelow));
  h+=g(L.panels.map((x,i)=>f(`panels.${i}.price`,x.w+'W panel (each)',x.price)).join('')+Object.keys(L.roof).map(r=>f('roof.'+r,r[0].toUpperCase()+r.slice(1)+' roof uplift (per panel)',L.roof[r])).join(''));
- h+=g(L.inv.map((x,i)=>f(`inv.${i}.price`,`${RANGES.find(q=>q[0]==x.r)[1]} ${x.kw}kW inverter`,x.price)).join(''));
- h+=g(L.pack.map((x,i)=>x.prices.map((p,j)=>f(`pack.${i}.prices.${j}`,`Package ${x.kw}kW + ${j+1} batter${j?'ies':'y'}`,p)).join('')).join(''));
- h+=g(L.bat.map((x,i)=>f(`bat.${i}.price`,`${RANGES.find(q=>q[0]==x.r)[1]} ${batName(x)}`,x.price)).join('')+['B','C','D'].map(r=>f('gw.'+r,RANGES.find(q=>q[0]==r)[1]+' gateway',L.gw[r])).join(''));
+ h+=g(L.inv.map((x,i)=>f(`inv.${i}.price`,invName(x),x.price)).join(''));
+ h+=g(L.pack.map((x,i)=>x.prices.map((p,j)=>f(`pack.${i}.prices.${j}`,`Hinen ${x.kw}kW + ${j+1} batter${j?'ies':'y'}`,p)).join('')).join(''));
+ h+=g(L.bat.map((x,i)=>f(`bat.${i}.price`,batName(x),x.price)).join('')+['B','C','D'].map(r=>f('gw.'+r,RANGES.find(q=>q[0]==r)[1]+' gateway',L.gw[r])).join(''));
  h+=g(L.scaf.map((x,i)=>i?f(`scaf.${i}.0`,'Scaffold: '+x[1],x[0]):'').join('')+f('bridge','Scaffold bridging',L.bridge)+L.cable.slice(0,-1).map((x,i)=>f(`cable.${i}.0`,'Cable '+x[1],x[0])).join(''));
  h+=g(f('opt','Optimiser (each)',L.opt)+f('bird','Bird guard (each)',L.bird)+f('iboost','Hot water diverter',L.iboost)+f('ev','EV charger (each)',L.ev));return h}
 function tlSync(){document.querySelectorAll('[data-s]').forEach(i=>cfg[i.dataset.s]=i.value);cfg.tl.forEach((m,i)=>{const q=a=>document.querySelector(`[data-${a}="${i}"]`);if(q('ty')){m.y=q('ty').value;m.t=q('tt').value;m.d=q('td').value}})}
